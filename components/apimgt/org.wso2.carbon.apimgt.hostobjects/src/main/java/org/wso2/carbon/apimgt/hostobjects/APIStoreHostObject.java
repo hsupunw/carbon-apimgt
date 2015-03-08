@@ -2313,39 +2313,6 @@ public class APIStoreHostObject extends ScriptableObject {
         return myn;
     }
 
-    public static String jsFunction_getSwaggerDiscoveryUrl(Context cx,
-                                                           Scriptable thisObj, Object[] args,
-                                                           Function funObj)
-            throws APIManagementException {
-        String apiName;
-        String version;
-        String providerName;
-
-        if (args != null && args.length != 0) {
-
-            apiName = (String) args[0];
-            version = (String) args[1];
-            providerName = (String) args[2];
-            
-            providerName = APIUtil.replaceEmailDomain(providerName);
-
-            String apiDefinitionFilePath = APIUtil.getAPIDefinitionFilePath(apiName, version, providerName);
-            apiDefinitionFilePath = RegistryConstants.PATH_SEPARATOR + "registry"
-                    + RegistryConstants.PATH_SEPARATOR + "resource"
-                    + RegistryConstants.PATH_SEPARATOR + "_system"
-                    + RegistryConstants.PATH_SEPARATOR + "governance"
-                    + apiDefinitionFilePath;
-
-            apiDefinitionFilePath = APIUtil.prependTenantPrefix(apiDefinitionFilePath, providerName);
-
-            return APIUtil.prependWebContextRoot(apiDefinitionFilePath);
-
-        } else {
-            handleException("Invalid input parameters.");
-            return null;
-        }
-    }
-
     /**
      * Returns the Swagger definition
      * @param cx

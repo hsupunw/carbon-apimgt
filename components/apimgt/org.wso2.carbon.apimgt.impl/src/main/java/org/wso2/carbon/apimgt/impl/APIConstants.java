@@ -72,12 +72,10 @@ public final class APIConstants {
 
     //registry location for consumer
     public static final String API_ROOT_LOCATION = API_APPLICATION_DATA_LOCATION + "/provider";
-    
+
     //registry location for API documentation
     public static final String API_DOC_LOCATION = API_APPLICATION_DATA_LOCATION + "/api-docs";
-    
-    public static final String API_DOC_1_2_LOCATION = "1.2";
-    
+
     //registry location for Custom sequences
     public static final String API_CUSTOM_SEQUENCE_LOCATION = APIMGT_REGISTRY_LOCATION+"/customsequences";
     
@@ -93,11 +91,7 @@ public final class APIConstants {
    //registry location for wsdl files
     public static final String API_WSDL_RESOURCE_LOCATION = API_APPLICATION_DATA_LOCATION + "/wsdls/";
     
-    public static final String API_DOC_RESOURCE_NAME = "api-doc.json";
-    
-    public static final String API_DOC_1_2_RESOURCE_NAME = "/api-doc";
-    
-    public static final String API_DEFINITION_DOC_NAME = "Swagger API Definition";
+    public static final String API_SWAGGER_RESOURCE_NAME = "swagger2.json";
 
     public static final String API_ICON_IMAGE = "icon";
     

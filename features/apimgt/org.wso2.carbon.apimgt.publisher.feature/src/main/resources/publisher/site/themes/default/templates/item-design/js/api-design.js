@@ -185,18 +185,19 @@ APIDesigner.prototype.check_if_resource_exist = function(path, method){
 
 
 APIDesigner.prototype.set_default_management_values = function(){
-    var operations = this.query("$.apis[*].file.apis[*].operations[*]");
+    var operations = this.query("$.paths.*.*");
+    console.log(operations);
     for(var i=0;i < operations.length;i++){
-        if(!operations[i].auth_type){
+        if(!operations[i]["x-auth-type"]){
             if(operations[i].method == "OPTIONS"){
-                operations[i].auth_type = OPTION_DEFAULT_AUTH;
+                operations[i]["x-auth-type"] = OPTION_DEFAULT_AUTH;
             }
             else{
-                operations[i].auth_type = DEFAULT_AUTH;                
+                operations[i]["x-auth-type"] = DEFAULT_AUTH;                
             }
         }
-        if(!operations[i].throttling_tier){
-            operations[i].throttling_tier = DEFAULT_TIER;
+        if(!operations[i]["x-throttling-tier"]){
+            operations[i]["x-throttling-tier"] = DEFAULT_TIER;
         }
     }
 }
@@ -471,7 +472,7 @@ APIDesigner.prototype.render_resource = function(container){
         var decorator = container.find('.editor').data('ace');
         var aceInstance = decorator.editor.ace;
         aceInstance.getSession().on('change', function(e) {
-            operation[0].mediation_script = aceInstance.getValue();
+            operation[0]["x-mediation-script"] = aceInstance.getValue();
         });
     }
 

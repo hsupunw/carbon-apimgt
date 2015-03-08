@@ -68,13 +68,13 @@ var updateAPIImplementation = function (api) {
     }
 };
 
-var getSwagger12Resource = function (api) {
+var getSwagger2Resource = function (api) {
     var success, log = new Log(),
             provider = jagg.module("manager").getAPIProviderObj();
     try {
-        success = provider.getSwagger12Resource(api);
+        success = provider.getSwagger2Resource(api);
         if (log.isDebugEnabled()) {
-            log.debug("getSwagger12Resource : " + api.name + "-" + api.version);
+            log.debug("getSwagger2Resource : " + api.name + "-" + api.version);
         }
         return success;        
     } catch (e) {

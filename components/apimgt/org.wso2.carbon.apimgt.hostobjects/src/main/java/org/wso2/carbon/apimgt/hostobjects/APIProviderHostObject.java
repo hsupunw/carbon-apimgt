@@ -636,7 +636,8 @@ public class APIProviderHostObject extends ScriptableObject {
         }
         
         if (apiData.get("swagger", apiData) != null) {
-        	Set<URITemplate> uriTemplates = parseResourceConfig(apiProvider, apiId, (String) apiData.get("swagger", apiData));
+            apiProvider.updateSwagger2(apiId, APIConstants.API_SWAGGER_RESOURCE_NAME , (String) apiData.get("swagger", apiData));
+            Set<URITemplate> uriTemplates = parseResourceConfig(apiProvider, apiId, (String) apiData.get("swagger", apiData));
         	api.setUriTemplates(uriTemplates);
         }
                 
@@ -724,7 +725,7 @@ public class APIProviderHostObject extends ScriptableObject {
      * @throws APIManagementException
      * @throws ScriptException
      */
-    public static NativeObject jsFunction_getSwagger12Resource(Context cx, Scriptable thisObj,
+    public static NativeObject jsFunction_getSwagger2Resource(Context cx, Scriptable thisObj,
 			Object[] args,	Function funObj) throws APIManagementException, ScriptException {
     	if (args==null||args.length == 0) {
             handleException("Invalid number of input parameters.");
@@ -754,7 +755,7 @@ public class APIProviderHostObject extends ScriptableObject {
                 PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(tenantDomain, true);
             }
         
-            apiJSON = apiProvider.getSwagger12Definition(apiId);
+            apiJSON = apiProvider.getSwagger2(apiId);
         } finally {
         	if (isTenantFlowStarted) {
         		PrivilegedCarbonContext.endTenantFlow();
@@ -819,8 +820,7 @@ public class APIProviderHostObject extends ScriptableObject {
     }
     
     /**
-     * This method parses the JSON resource config and returns the UriTemplates. Also it saves the swagger
-     * 1.2 resources in the registry
+     * This method parses the Swagger and returns the UriTemplates.
      * @param resourceConfigsJSON
      * @return
      * @throws APIManagementException
@@ -828,26 +828,23 @@ public class APIProviderHostObject extends ScriptableObject {
     private static Set<URITemplate> parseResourceConfig(APIProvider apiProvider, 
     			APIIdentifier apiId, String resourceConfigsJSON) throws APIManagementException {
     	JSONParser parser = new JSONParser();
-        JSONObject resourceConfigs = null;
-        JSONObject api_doc = null;
+        JSONObject swagger = null;
         Set<URITemplate> uriTemplates = new LinkedHashSet<URITemplate>();
         Set<Scope> scopeList = new LinkedHashSet<Scope>();
         boolean isTenantFlowStarted = false;
         try {
-            resourceConfigs = (JSONObject) parser.parse(resourceConfigsJSON);
-            api_doc = (JSONObject) resourceConfigs.get("api_doc");
-            String apiJSON = api_doc.toJSONString();
-            
+            swagger = (JSONObject) parser.parse(resourceConfigsJSON);
+
             String tenantDomain = MultitenantUtils.getTenantDomain(APIUtil.replaceEmailDomainBack(apiId.getProviderName()));
             if(tenantDomain != null && !MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(tenantDomain)) {
             	isTenantFlowStarted = true;
                 PrivilegedCarbonContext.startTenantFlow();
                 PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(tenantDomain, true);
             }
-            apiProvider.updateSwagger12Definition(apiId, APIConstants.API_DOC_1_2_RESOURCE_NAME, apiJSON);
-            
+
             /* Get Scopes*/
-            if (api_doc.get("authorizations") != null) {
+            /*
+            if (swagger.get("authorizations") != null) {
             	JSONObject authorizations = (JSONObject) api_doc.get("authorizations");
             	if (authorizations.get("oauth2") != null) {
             		JSONObject oauth2 = (JSONObject) authorizations.get("oauth2");
@@ -870,83 +867,48 @@ public class APIProviderHostObject extends ScriptableObject {
                         }
             		}
             	}
-            }
-            
-        
-	        JSONArray resources = (JSONArray) resourceConfigs.get("resources");
-	                
-	        //Iterating each resourcePath config
-	        for (int i = 0; i < resources.size(); i++) {
-	            JSONObject resourceConfig = (JSONObject) resources.get(i);
-                APIManagerConfiguration config = ServiceReferenceHolder.getInstance().getAPIManagerConfigurationService().getAPIManagerConfiguration();
-                List<Environment> environments = config.getApiGatewayEnvironments();
-                Environment env = null;
-                String ep = "";
-                if(environments!=null) {
-                    env = environments.get(0);
-                    String gatewayEndpoint = env.getApiGatewayEndpoint();
-                    if (gatewayEndpoint.contains(",")) {
-                        ep = gatewayEndpoint.split(",")[0];
-                    } else {
-                        ep = gatewayEndpoint;
+            }*/
+
+            if(swagger.get("paths")!=null) {
+                JSONObject paths = (JSONObject) swagger.get("paths");
+                for(Iterator ipaths = paths.keySet().iterator(); ipaths.hasNext();) {
+                    String uriTempVal = (String) ipaths.next();
+                    JSONObject path = (JSONObject) paths.get(uriTempVal);
+                    for(Iterator ipath = path.keySet().iterator(); ipath.hasNext();) {
+                        String httpVerb = (String) ipath.next();
+                        JSONObject operation = (JSONObject) path.get(httpVerb);
+
+                        /* Right Now PATCH is not supported. Need to remove
+	                	 * this check when PATCH is supported*/
+                        if (!"PATCH".equals(httpVerb)) {
+                            URITemplate template = new URITemplate();
+                            //Scope scope= APIUtil.findScopeByKey(scopeList,(String) operation.get("scope"));
+
+                            String authType = (String) operation.get("x-auth-type");
+                            if (authType != null) {
+                                if (authType.equals("Application & Application User")) {
+                                    authType = APIConstants.AUTH_APPLICATION_OR_USER_LEVEL_TOKEN;
+                                }
+                                if (authType.equals("Application User")) {
+                                    authType = "Application_User";
+                                }
+                            } else {
+                                authType = APIConstants.AUTH_NO_AUTHENTICATION;
+                            }
+                            template.setThrottlingTier((String) operation.get("x-throttling-tier"));
+                            template.setMediationScript((String) operation.get("x-mediation-script"));
+                            template.setUriTemplate(uriTempVal);
+                            template.setHTTPVerb(httpVerb);
+                            template.setAuthType(authType);
+                            //template.setScope(scope);
+
+                            uriTemplates.add(template);
+                        }
                     }
                 }
-                String apiPath = APIUtil.getAPIPath(apiId);
-                API api = apiProvider.getAPI(apiPath);
-                if(ep.endsWith(RegistryConstants.PATH_SEPARATOR)){
-                    ep.substring(0,ep.length()-1);
-                }
-                String basePath = ep+api.getContext()+RegistryConstants.PATH_SEPARATOR+apiId.getVersion();
-                resourceConfig.put("basePath",basePath);
-	            String resourceJSON = resourceConfig.toJSONString();
-	            
-	            String resourcePath = (String) resourceConfig.get("resourcePath");
-	            
-	            apiProvider.updateSwagger12Definition(apiId, resourcePath, resourceConfig.toJSONString());
-	            
-	            JSONArray resource_configs = (JSONArray) resourceConfig.get("apis");
-	            
-	            //Iterating each Sub resourcePath config
-	            for (int j = 0; j < resource_configs.size(); j++) {
-	            	JSONObject resource = (JSONObject) resource_configs.get(j);
-	            	String uriTempVal = (String) resource.get("path");
-	                uriTempVal = uriTempVal.startsWith("/") ? uriTempVal : ("/" + uriTempVal);
-	                
-	                JSONArray operations = (JSONArray) resource.get("operations");
-	            	//Iterating each operation config
-	                for (int k = 0; k < operations.size(); k++) {
-	                	JSONObject operation = (JSONObject) operations.get(k);
-	                	String httpVerb = (String) operation.get("method");
-	                	/* Right Now PATCH is not supported. Need to remove
-	                	 * this check when PATCH is supported*/
-	                	if (!"PATCH".equals(httpVerb)) {
-	                		URITemplate template = new URITemplate();
-		                	Scope scope= APIUtil.findScopeByKey(scopeList,(String) operation.get("scope"));
-		                	
-		                	 String authType = (String) operation.get("auth_type");
-		                     if (authType != null) {
-			                	 if (authType.equals("Application & Application User")) {
-			                         authType = APIConstants.AUTH_APPLICATION_OR_USER_LEVEL_TOKEN;
-			                     }
-			                     if (authType.equals("Application User")) {
-			                         authType = "Application_User";
-			                     }
-		                     } else {
-		                    	 authType = APIConstants.AUTH_NO_AUTHENTICATION;
-		                     }
-		                     template.setThrottlingTier((String) operation.get("throttling_tier"));
-		                     template.setMediationScript((String) operation.get("mediation_script"));
-		                     template.setUriTemplate(uriTempVal);
-		                 	 template.setHTTPVerb(httpVerb);
-		                 	 template.setAuthType(authType);
-		                 	 template.setScope(scope);
-		                 	 
-		                 	 uriTemplates.add(template);
-	                	}
-	                }
-	            	
-	            }
-	        }
+            }else{
+                //@todo generate default paths
+            }
         } catch(ParseException e) {
             handleException("Invalid resource config", e);
         } catch(ClassCastException e) {
@@ -2718,8 +2680,8 @@ public class APIProviderHostObject extends ScriptableObject {
             PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(tenantDomain, true);
         }
         try {
-            if (docName.equals(APIConstants.API_DEFINITION_DOC_NAME)) {
-                apiProvider.addAPIDefinitionContent(apiId, docName, docContent);
+            if (docName.equals(APIConstants.API_SWAGGER_RESOURCE_NAME)) {
+                //@todo this check should be removed possibley placing swagger2 in a seperate location.
             } else {
             	API api = apiProvider.getAPI(apiId);
             	apiProvider.addDocumentationContent(api, docName, docContent);
@@ -3713,24 +3675,24 @@ public class APIProviderHostObject extends ScriptableObject {
             doc.setVisibility(Documentation.DocumentVisibility.OWNER_ONLY);
         }
         APIProvider apiProvider = getAPIProvider(thisObj);
-        if(!docName.equals(APIConstants.API_DEFINITION_DOC_NAME)){
-        Documentation oldDoc = apiProvider.getDocumentation(apiId, doc.getType(), doc.getName());
+        if(!docName.equals(APIConstants.API_SWAGGER_RESOURCE_NAME)){
+            Documentation oldDoc = apiProvider.getDocumentation(apiId, doc.getType(), doc.getName());
 
-        try {
+            try {
 
-            if (fileHostObject != null && fileHostObject.getJavaScriptFile().getLength() != 0) {
-                Icon icon = new Icon(fileHostObject.getInputStream(),
-                                     fileHostObject.getJavaScriptFile().getContentType());
-                String filePath = APIUtil.getDocumentationFilePath(apiId, fileHostObject.getName());
-                doc.setFilePath(apiProvider.addIcon(filePath, icon));
-            } else if (oldDoc.getFilePath() != null) {
-                doc.setFilePath(oldDoc.getFilePath());
+                if (fileHostObject != null && fileHostObject.getJavaScriptFile().getLength() != 0) {
+                    Icon icon = new Icon(fileHostObject.getInputStream(),
+                                         fileHostObject.getJavaScriptFile().getContentType());
+                    String filePath = APIUtil.getDocumentationFilePath(apiId, fileHostObject.getName());
+                    doc.setFilePath(apiProvider.addIcon(filePath, icon));
+                } else if (oldDoc.getFilePath() != null) {
+                    doc.setFilePath(oldDoc.getFilePath());
+                }
+
+            } catch (Exception e) {
+                handleException("Error while creating an attachment for Document- " + docName + "-" + version, e);
+                return false;
             }
-
-        } catch (Exception e) {
-            handleException("Error while creating an attachment for Document- " + docName + "-" + version, e);
-            return false;
-        }
         }
         boolean isTenantFlowStarted = false;
         try {

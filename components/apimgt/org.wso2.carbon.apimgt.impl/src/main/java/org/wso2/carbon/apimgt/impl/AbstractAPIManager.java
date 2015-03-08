@@ -428,28 +428,6 @@ public abstract class AbstractAPIManager implements APIManager {
 
                 documentationList.add(doc);
             }
-            /* Document for loading API definition Content - Swagger*/
-            Documentation documentation = new Documentation(DocumentationType.SWAGGER_DOC, APIConstants.API_DEFINITION_DOC_NAME);
-            Documentation.DocumentSourceType docSourceType = Documentation.DocumentSourceType.INLINE;
-            documentation.setSourceType(docSourceType);
-            documentation.setVisibility(Documentation.DocumentVisibility.API_LEVEL);
-
-            String swaggerDocPath = APIConstants.API_DOC_LOCATION + RegistryConstants.PATH_SEPARATOR + 
-            		apiId.getApiName() +"-"  + apiId.getVersion() +'-'+apiId.getProviderName() + RegistryConstants.PATH_SEPARATOR + APIConstants.API_DOC_RESOURCE_NAME;
-            if (registry.resourceExists(swaggerDocPath)) {
-            	Resource docResource = registry.get(swaggerDocPath);
-            	documentation.setLastUpdated(docResource.getLastModified());
-                String visibility=docResource.getProperty(APIConstants.VISIBILITY);
-                if(visibility==null){visibility=APIConstants.DOC_API_BASED_VISIBILITY;}
-                if (visibility.equalsIgnoreCase(Documentation.DocumentVisibility.API_LEVEL.toString())) {
-                    documentation.setVisibility(Documentation.DocumentVisibility.API_LEVEL);
-                } else if (visibility.equalsIgnoreCase(Documentation.DocumentVisibility.PRIVATE.toString())) {
-                    documentation.setVisibility(Documentation.DocumentVisibility.PRIVATE);
-                } else {
-                    documentation.setVisibility(Documentation.DocumentVisibility.OWNER_ONLY);
-                }
-            	documentationList.add(documentation);
-            }
 
         } catch (RegistryException e) {
             handleException("Failed to get documentations for api " + apiId.getApiName(), e);
@@ -565,21 +543,6 @@ public abstract class AbstractAPIManager implements APIManager {
                 Object content = docContent.getContent();
                 if (content != null) {
                     return new String((byte[]) docContent.getContent());
-                }
-            }
-            /* Loading API definition Content - Swagger*/
-            if(documentationName != null && documentationName.equals(APIConstants.API_DEFINITION_DOC_NAME))
-            {
-                String swaggerDocPath = APIConstants.API_DOC_LOCATION + RegistryConstants.PATH_SEPARATOR +
-                        identifier.getApiName() +"-"  + identifier.getVersion() + "-" + identifier.getProviderName() + RegistryConstants.PATH_SEPARATOR + APIConstants.API_DOC_RESOURCE_NAME;
-                /* API Definition content will be loaded only in API Provider. Hence globally initialized
-           * registry can be used here.*/
-                if (this.registry.resourceExists(swaggerDocPath)) {
-                    Resource docContent = registry.get(swaggerDocPath);
-                    Object content = docContent.getContent();
-                    if (content != null) {
-                        return new String((byte[]) docContent.getContent());
-                    }
                 }
             }
         } catch (RegistryException e) {
@@ -829,8 +792,8 @@ public abstract class AbstractAPIManager implements APIManager {
 
     @Override
     public String getSwaggerDefinition(APIIdentifier apiId) throws APIManagementException {
-        String resourcePath = APIUtil.getAPIDefinitionFilePath(apiId.getApiName(),
-                apiId.getVersion(), apiId.getProviderName());
+        String resourcePath = APIUtil.getSwagger2FilePath(apiId.getApiName(),
+                apiId.getVersion(), apiId.getProviderName()) + APIConstants.API_SWAGGER_RESOURCE_NAME;
 
         JSONParser parser = new JSONParser();
         JSONObject apiJSON = null;

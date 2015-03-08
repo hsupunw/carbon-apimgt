@@ -419,9 +419,9 @@ public class APIManagerStartupPublisher implements ServerStartupHandler {
 		APIIdentifier identifier = api.getId();
 
 		try {
-			String jsonText = APIUtil.createSwaggerJSONContent(api);
+			String jsonText = APIUtil.createSwagger2JSONContent(api);
 
-			String resourcePath = APIUtil.getAPIDefinitionFilePath(identifier.getApiName(), identifier.getVersion(), identifier.getProviderName());
+			String resourcePath = APIUtil.getSwagger2FilePath(identifier.getApiName(), identifier.getVersion(), identifier.getProviderName());
 
 			Resource resource = registry.newResource();
 

@@ -561,12 +561,6 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
                     }
                 }
 
-                /* Create API Definition for Swagger Console if not created already*/
-                String apiDefinitionFilePath = APIUtil.getAPIDefinitionFilePath(api.getId().getApiName(), api.getId().getVersion(), api.getId().getProviderName());
-                if (!registry.resourceExists(apiDefinitionFilePath)) {
-                	createUpdateAPIDefinition(api);
-                }
-
                 //update apiContext cache
                 if (APIUtil.isAPIManagementEnabled()) {
                     Cache contextCache = APIUtil.getAPIContextCache();
@@ -579,9 +573,7 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
                                 ". " + e.getMessage(), e);
             } catch (AxisFault axisFault) {
                 handleException("Error while invalidating API resource cache", axisFault);
-            } catch (RegistryException e) {
-            	handleException("Error while creating swagger 1.1 API definition:" + api.getId().getApiName(),e);
-			}
+            }
 
         } else {
             // We don't allow API status updates via this method.
@@ -680,13 +672,8 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
                 List<Documentation> docs = getAllDocumentation(api.getId());
 
                 for (Documentation doc : docs) {
-                    if(APIConstants.API_DEFINITION_DOC_NAME.equals(doc.getName())){
-                        String swaggerPath=APIUtil.getAPIDefinitionFilePath(api.getId().getApiName(),api.getId().getVersion(),api.getId().getProviderName());
-                        Resource resource = registry.get(swaggerPath);
-                        String visibility=resource.getProperty(APIConstants.VISIBILITY);
-                        if ((APIConstants.DOC_API_BASED_VISIBILITY).equalsIgnoreCase(visibility)) {
-                            APIUtil.setResourcePermissions(api.getId().getProviderName(), api.getVisibility(),visibleRoles,swaggerPath);
-                        }
+                    if(APIConstants.API_SWAGGER_RESOURCE_NAME.equals(doc.getName())){
+                        //@todo place swagger doc in a seperate place
                     }else{
                         if ((APIConstants.DOC_API_BASED_VISIBILITY).equalsIgnoreCase(doc.getVisibility().name())) {
                             String documentationPath = APIUtil.getAPIDocPath(api.getId()) + doc.getName();
@@ -720,40 +707,7 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
 
         }
     }
-    
-    /**
-     * Create API Definition in JSON and save in the registry
-     *
-     * @param api API
-     * @throws org.wso2.carbon.apimgt.api.APIManagementException
-     *          if failed to generate the content and save
-     */
-    private void createUpdateAPIDefinition(API api) throws APIManagementException {
-    	APIIdentifier identifier = api.getId(); 
-    	
-    	try{
-    		String jsonText = APIUtil.createSwaggerJSONContent(api);
-    		
-    		String resourcePath = APIUtil.getAPIDefinitionFilePath(identifier.getApiName(), identifier.getVersion(),identifier.getProviderName());
-    		
-    		Resource resource = registry.newResource();
-    		    		
-    		resource.setContent(jsonText);
-    		resource.setMediaType("application/json");
-    		registry.put(resourcePath, resource);
-    		
-    		/*Set permissions to anonymous role */
-    		APIUtil.setResourcePermissions(api.getId().getProviderName(), null, null, resourcePath);
-    			    
-    	} catch (RegistryException e) {
-    		handleException("Error while adding API Definition for " + identifier.getApiName() + "-" + identifier.getVersion(), e);
-		} catch (APIManagementException e) {
-			handleException("Error while adding API Definition for " + identifier.getApiName() + "-" + identifier.getVersion(), e);
-		}
-    }
-    
-    
-    
+
     public void changeAPIStatus(API api, APIStatus status, String userId,
                                 boolean updateGatewayConfig) throws APIManagementException {
         APIStatus currentStatus = api.getStatus();
@@ -1118,11 +1072,8 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
 
             for (Documentation doc : docs) {
             	/* If the document is API Definition for swagger */
-            	if (doc.getName().equals(APIConstants.API_DEFINITION_DOC_NAME)) {
-            		/* Create the JSON Content again for API with new definition */
-            		String content = APIUtil.createSwaggerJSONContent(newAPI);
-            		addAPIDefinitionContent(newId, doc.getName(), content);
-            		setPermissionToAPIDefinition(newAPI, doc);
+            	if (doc.getName().equals(APIConstants.API_SWAGGER_RESOURCE_NAME)) {
+            		//@todo jo remove here
 				} else {
 					/* copying the file in registry for new api */
 					Documentation.DocumentSourceType sourceType = doc.getSourceType();
@@ -1174,10 +1125,10 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
             //copy only if there are swagger 1.2 data. APIs created before APIM 1.7 do not have swagger 1.2
             //data entry in the registry. When copying a migrated API just ignore the swagger 1.2. 
             //getSwagger12Definition() method will handle displaying the swagger 1.1 apis           
-            String resourcePath = APIUtil.getSwagger12DefinitionFilePath(api.getId().getApiName(),
+            String resourcePath = APIUtil.getSwagger2FilePath(api.getId().getApiName(),
             		api.getId().getVersion(), api.getId().getProviderName());            
-            if (registry.resourceExists(resourcePath + APIConstants.API_DOC_1_2_RESOURCE_NAME)) {            	
-            	 copySwagger12Resources(api.getId(), newId);            	 
+            if (registry.resourceExists(resourcePath + APIConstants.API_SWAGGER_RESOURCE_NAME)) {
+            	 copySwagger2Resources(api.getId(), newId);
 			}
             
             // Make sure to unset the isLatest flag on the old version
@@ -1216,7 +1167,7 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
 		APIIdentifier identifier=newAPI.getId();
 		API api = newAPI;
 		String apiDefinitionFilePath =
-		                               APIUtil.getAPIDefinitionFilePath(identifier.getApiName(),
+		                               APIUtil.getSwagger2FilePath(identifier.getApiName(),
 		                                                                identifier.getVersion(),
 		                                                                identifier.getProviderName());
 		try {
@@ -1242,30 +1193,20 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
 
 	}
 	
-    private void copySwagger12Resources(APIIdentifier apiId, APIIdentifier newAPIId) throws APIManagementException{
-    	String resourcePath = APIUtil.getSwagger12DefinitionFilePath(apiId.getApiName(),
+    private void copySwagger2Resources(APIIdentifier apiId, APIIdentifier newAPIId) throws APIManagementException{
+    	String resourcePath = APIUtil.getSwagger2FilePath(apiId.getApiName(),
                 apiId.getVersion(), apiId.getProviderName());
 		
 		JSONParser parser = new JSONParser();
 		JSONObject apiJSON = null;
 		try {
-			Resource apiDocResource = registry.get(resourcePath + APIConstants.API_DOC_1_2_RESOURCE_NAME);
+			Resource apiDocResource = registry.get(resourcePath + APIConstants.API_SWAGGER_RESOURCE_NAME);
 			String apiDocContent = new String((byte []) apiDocResource.getContent());
 			apiJSON = (JSONObject) parser.parse(apiDocContent);
-			updateSwagger12Definition(newAPIId, APIConstants.API_DOC_1_2_RESOURCE_NAME, apiJSON.toJSONString());
+			updateSwagger2(newAPIId, APIConstants.API_SWAGGER_RESOURCE_NAME, apiJSON.toJSONString());
 			
 			JSONArray pathConfigs = (JSONArray) apiJSON.get("apis");
-			
-			for (int k = 0; k < pathConfigs.size(); k++) {
-				JSONObject pathConfig = (JSONObject) pathConfigs.get(k);
-				String pathName = (String) pathConfig.get("path");
-				pathName = pathName.startsWith("/") ? pathName : ("/" + pathName);
-				
-				Resource pathResource = registry.get(resourcePath + pathName);
-				String pathContent = new String((byte []) pathResource.getContent());
-				JSONObject pathJSON = (JSONObject) parser.parse(pathContent);
-				updateSwagger12Definition(newAPIId, pathName, pathJSON.toJSONString());
-			}
+
 		} catch (RegistryException e) {
 			handleException("Error while retrieving Swagger Definition for " + apiId.getApiName() + "-" + 
 											apiId.getVersion(), e);
@@ -1399,42 +1340,6 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
     }
     
     /**
-     * This method used to update the API definition content - Swagger
-     *
-     * @param identifier,        API identifier
-     * @param documentationName, name of the inline documentation
-     * @param text,              content of the inline documentation
-     * @throws org.wso2.carbon.apimgt.api.APIManagementException
-     *          if failed to add the document as a resource to registry
-     */
-    public void addAPIDefinitionContent(APIIdentifier identifier, String documentationName, String text) 
-    					throws APIManagementException {
-    	String contentPath = APIUtil.getAPIDefinitionFilePath(identifier.getApiName(), identifier.getVersion(),identifier.getProviderName());
-    	
-    	try {
-            Resource docContent = registry.newResource();
-            docContent.setContent(text);
-            docContent.setMediaType("text/plain");
-            docContent.setProperty(APIConstants.VISIBILITY,APIConstants.DOC_API_BASED_VISIBILITY);
-            registry.put(contentPath, docContent);
-
-            //Commented below section as to set same permissions set we are giving to /_system/governance/apimgt/applicationdata/api-docs/api_name-version-provider location to apply with json content
-           /* String apiPath = APIUtil.getAPIPath(identifier);
-            API api = getAPI(apiPath);
-            String visibleRolesList = api.getVisibleRoles();
-            String[] visibleRoles = new String[0];
-            if (visibleRolesList != null) {
-                visibleRoles = visibleRolesList.split(",");
-            }
-    		APIUtil.setResourcePermissions(api.getId().getProviderName(), api.getVisibility(), visibleRoles, contentPath);  */
-    	} catch (RegistryException e) {
-            String msg = "Failed to add the API Definition content of : "
-                         + documentationName + " of API :" + identifier.getApiName();
-            handleException(msg, e);
-        } 
-    }
-
-    /**
      * Updates a given documentation
      *
      * @param apiId         APIIdentifier
@@ -1447,30 +1352,8 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
 
         String apiPath = APIUtil.getAPIPath(apiId);
         API api=getAPI(apiPath);
-        if (documentation.getName().equals(APIConstants.API_DEFINITION_DOC_NAME)) {
-        try{
-        String swaggerDocPath = APIUtil.getAPIDefinitionFilePath(apiId.getApiName(), apiId.getVersion(), apiId.getProviderName());
-        String[] authorizedRoles = getAuthorizedRoles(swaggerDocPath);
-        String docVisibility=documentation.getVisibility().name();
-        Resource resource = registry.get(swaggerDocPath);
-        resource.setProperty(APIConstants.VISIBILITY,docVisibility);
-        registry.put(swaggerDocPath,resource);
-
-        String visibility= api.getVisibility();
-        if(docVisibility!=null){
-        if(APIConstants.DOC_SHARED_VISIBILITY.equalsIgnoreCase(docVisibility)){
-        authorizedRoles=null;
-        visibility=APIConstants.DOC_SHARED_VISIBILITY;
-        } else if(APIConstants.DOC_OWNER_VISIBILITY.equalsIgnoreCase(docVisibility)){
-        authorizedRoles = null;
-        visibility=APIConstants.DOC_OWNER_VISIBILITY;
-        }
-        }
-        APIUtil.setResourcePermissions(api.getId().getProviderName(),
-                    visibility, authorizedRoles, swaggerDocPath);
-        } catch (Exception e) {
-            handleException("Failed to update swagger documentation permission", e);
-        }
+        if (documentation.getName().equals(APIConstants.API_SWAGGER_RESOURCE_NAME)) {
+            //@todo jo remove here
         }else{
         String docPath = APIConstants.API_ROOT_LOCATION + RegistryConstants.PATH_SEPARATOR +
                          apiId.getProviderName() + RegistryConstants.PATH_SEPARATOR + apiId.getApiName() +
@@ -1498,10 +1381,8 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
                     visibility=APIConstants.DOC_OWNER_VISIBILITY;
                 }
             }
-            if (!documentation.getName().equals(APIConstants.API_DEFINITION_DOC_NAME)) {
-            GenericArtifact updateApiArtifact = APIUtil.createDocArtifactContent(artifact, apiId, documentation);
-            artifactManager.updateGenericArtifact(updateApiArtifact);
-            clearResourcePermissions(docPath, apiId);
+            if (!documentation.getName().equals(APIConstants.API_SWAGGER_RESOURCE_NAME)) {
+                //@todo remove here
             }
 
             APIUtil.setResourcePermissions(api.getId().getProviderName(),
@@ -1608,10 +1489,6 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
             APIUtil.setResourcePermissions(api.getId().getProviderName(), api.getVisibility(), visibleRoles, artifactPath);
             registry.commitTransaction();
 
-            /* Generate API Definition for Swagger Console if any URI templates are available */
-            if (api.getUriTemplates().size() > 0) {
-            	createUpdateAPIDefinition(api);
-            }            
             if(log.isDebugEnabled()){
             	String logMessage = "API Name: " + api.getId().getApiName() + ", API Version "+api.getId().getVersion()+" created";
             	log.debug(logMessage);
@@ -2390,10 +2267,10 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
 	}
 	
 	@Override
-	public void updateSwagger12Definition(APIIdentifier apiId, String fileName, 
+	public void updateSwagger2(APIIdentifier apiId, String fileName,
 									String jsonText) throws APIManagementException {
 		try{
-    		String resourcePath = APIUtil.getSwagger12DefinitionFilePath(apiId.getApiName(), 
+    		String resourcePath = APIUtil.getSwagger2FilePath(apiId.getApiName(),
     				apiId.getVersion(), apiId.getProviderName());
     		
     		resourcePath = resourcePath + fileName;
@@ -2403,7 +2280,7 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
     		resource.setContent(jsonText);
     		resource.setMediaType("application/json");
     		registry.put(resourcePath, resource);
-    		
+    		//@todo set API permissions for swagger 2 as well
     		/*Set permissions to anonymous role */
     		APIUtil.setResourcePermissions(apiId.getProviderName(), null, null, resourcePath);
     			    
@@ -2416,31 +2293,17 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
 	}
 	
 	@Override
-	public String getSwagger12Definition(APIIdentifier apiId) throws APIManagementException {
-		String resourcePath = APIUtil.getSwagger12DefinitionFilePath(apiId.getApiName(),
+	public String getSwagger2(APIIdentifier apiId) throws APIManagementException {
+		String resourcePath = APIUtil.getSwagger2FilePath(apiId.getApiName(),
                 apiId.getVersion(), apiId.getProviderName());
 		
 		JSONParser parser = new JSONParser();
 		JSONObject apiJSON = null;
 		try {
-			if (!registry.resourceExists(resourcePath + APIConstants.API_DOC_1_2_RESOURCE_NAME)) {
-				return APIUtil.createSwagger12JSONContent(getAPI(apiId));
-			}
-			Resource apiDocResource = registry.get(resourcePath + APIConstants.API_DOC_1_2_RESOURCE_NAME);
+			Resource apiDocResource = registry.get(resourcePath + APIConstants.API_SWAGGER_RESOURCE_NAME);
 			String apiDocContent = new String((byte []) apiDocResource.getContent());
 			apiJSON = (JSONObject) parser.parse(apiDocContent);
-			JSONArray pathConfigs = (JSONArray) apiJSON.get("apis");
-			
-			for (int k = 0; k < pathConfigs.size(); k++) {
-				JSONObject pathConfig = (JSONObject) pathConfigs.get(k);
-				String pathName = (String) pathConfig.get("path");
-				pathName = pathName.startsWith("/") ? pathName : ("/" + pathName);
-				
-				Resource pathResource = registry.get(resourcePath + pathName);
-				String pathContent = new String((byte []) pathResource.getContent());
-				JSONObject pathJSON = (JSONObject) parser.parse(pathContent);
-				pathConfig.put("file", pathJSON);
-		       }
+
 		} catch (RegistryException e) {
 			handleException("Error while retrieving Swagger Definition for " + apiId.getApiName() + "-" + 
 											apiId.getVersion(), e);
