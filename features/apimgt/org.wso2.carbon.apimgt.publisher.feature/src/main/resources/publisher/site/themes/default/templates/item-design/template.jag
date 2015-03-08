@@ -92,18 +92,18 @@
             <div id="swaggerUpload" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
                 <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-                <h3 id="swaggerUploadLabel">Import Swagger Definition</h3>                    
+                <h3 id="swaggerUploadLabel">Import Swagger 2 Definition</h3>                    
                 </div>
                 <div class="modal-body">
-                    <!-- <label>Upload a zip file containing swagger definitions :</label>
+                    <label>Upload swagger definition:</label>
                     <input type="file" name="somename" size="chars"> 
                     <br />
                     <br />                        
                     <h6>OR</h6>
-                    <br /> -->
-                    <label>Definition URL :</label>
+                    <br />
+                    <label>Definition URL:</label>
                     <input type="text" placeholder="" class="span12" id="swagger_import_url" name="swagger_import_url">
-                    <span class="help-block">Example : http://petstore.swagger.wordnik.com/api/api-docs </span>                                                              
+                    <span class="help-block">Example : http://petstore.swagger.io/v2/swagger.json </span>                                                              
                 </div>                    
                 <div class="modal-footer">
                 <button class="btn btn-primary" id="import_swagger">Import</button>                    
@@ -135,7 +135,7 @@
     <div class="control-group">
         <label class="control-label" for="name"><%=i18n.localize("name")%>:<span class="requiredAstrix">*</span></label>
         <div class="controls">
-            <input type="text" class="input-xlarge required validRegistryName validateForwardSlashAtEnd validInput apiNameExists noSpace" id="name" name="name" autofocus="autofocus" value=""/>
+            <input type="text" class="input-xlarge required validRegistryName validInput apiNameExists noSpace" id="name" name="name" autofocus="autofocus" value=""/>
             <a class="icon-question-sign help_popup" help_data="name_help"></a>
             <p id="name_help" class="hide"><%=i18n.localize("nameHelpMsg")%></p>
         </div>
@@ -144,7 +144,7 @@
     <div class="control-group">
         <label class="control-label" for="context"><%=i18n.localize("context")%>:<span class="requiredAstrix">*</span></label>
         <div class="controls">
-            <input type="text" class="input-xlarge required validRegistryName validateForwardSlashAtEnd validInput contextExists noSpace" id="context" name="context" onchange="getContextValue()" />
+            <input type="text" class="input-xlarge required validRegistryName validInput contextExists noSpace" id="context" name="context" onchange="getContextValue()" />
             <a class="icon-question-sign help_popup" help_data="context_help"></a>
             <p id="context_help" class="hide"><%=i18n.localize("contextHelpMsg")%></p>
         </div>
@@ -275,7 +275,7 @@
                     <label class="control-label" for="tags"><%=i18n.localize("tags")%>:</label>
                     <div class="controls">
                         <input type="text" placeholder="Add tags" class="input-xlarge validInput validRegistryName" id="tags" name="tags" value="<%= _tags %>" data-role="tagsinput"
-                        onkeyup="$(this).validate()"/>
+                        onkeyup="$(this).validate()/>
                         <a class="icon-question-sign help_popup" help_data="tag_help"></a>
                         <p id="tag_help" class="hide"><%=i18n.localize("tagsHelpMsg")%></p>
 			<p class="help-block"><%=i18n.localize("tagsHelpLabel")%></p>
@@ -311,8 +311,8 @@
 
 <script id="designer-resource-template" type="text/x-handlebars-template">
 <div class="resource_body_padding">
-    <h5>Implementation Notes :</h5>
-    <a class="notes" data-path="{{resource_path}}" data-attr="notes">{{ notes }}</a>
+    <h5>Description :</h5>
+    <a class="notes" data-path="{{resource_path}}" data-attr="description">{{ description }}</a>
     <br />
     <br />        
     <h5>Response Content Type : <a href="#" data-path="{{resource_path}}" data-attr="content_type" class="content_type" data-type="typeahead" data-pk="1" data-title="Responce Content Type">{{ content_type }}</a></h5>
@@ -331,7 +331,7 @@
         <tr>
         <td>{{ name }}</td>
         <td><a class="param_desc" data-path="{{ ../resource_path}}.parameters[{{@index}}]" data-attr="description">{{ description }}</a></td>
-        <td><a class="param_paramType" data-type="select" data-path="{{ ../resource_path}}.parameters[{{@index}}]" data-attr="paramType">{{ paramType }}</a></td>
+        <td><a class="param_paramType" data-type="select" data-path="{{ ../resource_path}}.parameters[{{@index}}]" data-attr="in">{{ in }}</a></td>
         <td><a class="param_type" data-path="{{../resource_path}}.parameters[{{@index}}]" data-attr="type">{{ type }}</a></td>
         <td><a class="param_required" data-type="select" data-path="{{../resource_path}}.parameters[{{@index}}]" data-attr="required" data-value="{{toString required }}"></a></td>
         </tr> 
@@ -367,34 +367,26 @@
             </div>
         </div>
         <div class="control-group">
-            <label class="control-label" for="inputResource">Resource Name</label>
+            <label class="control-label" for="inputResourceTags">Tags</label>
             <div class="controls">
-                <input type="text" id="inputResource" placeholder="Resource">
+                <input type="text" id="inputResourceTags" placeholder="tags">
             </div>
         </div>
         <button class="btn" type="button" id="add_resource" style="margin:0 0 10px 10px;"><i class="icon-plus-sign"></i>&nbsp;<%=i18n.localize("addNewResource")%></button>
     </div>
 <table style="width:100%">                       
-{{#each api_doc.apis}}
-{{ setIndex @index}}
-    <tr>
-    <td colspan="4"><h4 class="resource_group_title">{{ path }}</h4></td>
-    </tr>
-    {{# each file.apis}}
-        {{ setIndex @index}}
-        {{# each operations}}
-        <tr class="resource_container" data-path="$.apis[{{ ../../index}}].file.apis[{{ ../index }}].operations[{{ @index }}]">
-            <td class="resource-method-td resource_expand" data-path="$.apis[{{ ../../index}}].file.apis[{{ ../index }}].operations[{{ @index }}]">
-                <span class=" resource-method resource-method-{{ method }}">{{ method }}</span>
+{{#each doc.paths}}
+    {{# each this}}
+        <tr class="resource_container" data-path="$.paths.{{ path }}.{{@key}}">
+            <td class="resource-method-td resource_expand" data-path="$.paths.{{ path}}.{{ @key }}">
+                <span class=" resource-method resource-method-{{ @key }}">{{ @key }}</span>
             </td>
-            <td class="resource_expand"><a class="resource-path">{{ ../path }}</a></td>    
-            <td  width="99%"><span class="operation-summary change_summary" data-path="$.apis[{{ ../../index}}].file.apis[{{ ../index }}].operations[{{ @index }}]" data-attr="summary" >{{ summary }}</span></td>
-            <td class="delete_resource_td "><a class='operation-summary delete_resource' data-path-name="{{ ../path }}" data-path="$.apis[{{ ../../index}}].file.apis[{{ ../index }}].operations" data-index="{{ @index }}"><i class='icon-trash'></i></a></td>
+            <td class="resource_expand"><a class="resource-path">{{ path }}</a></td>    
+            <td  width="99%"><span class="operation-summary change_summary" data-path="$.paths.{{ path }}.{{@key}}" data-attr="summary" >{{ summary }}</span></td>
+            <td class="delete_resource_td "><a class='operation-summary delete_resource' data-operation="{{ @key }}" data-path-name="{{ ../path }}" data-path="$.paths.{{ path }}.{{@key}}" data-index="{{ @index }}"><i class='icon-trash'></i></a></td>
         </tr>
-        <tr><td colspan="4" class="resource_body hide" data-path="$.apis[{{ ../../index}}].file.apis[{{ ../index }}].operations[{{ @index }}]"></td></tr>
-        {{/each}}
+        <tr><td colspan="4" class="resource_body hide" data-path="$.paths.{{ path }}.{{@key}}"></td></tr>
     {{/each}}
-
 {{/each}}
 </table>                                         
 </script>

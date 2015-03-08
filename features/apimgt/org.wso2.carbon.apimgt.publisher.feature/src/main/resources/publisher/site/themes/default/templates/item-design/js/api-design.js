@@ -2,29 +2,18 @@
 //This is the default place holder
 var api_doc = 
 {
-    "apiVersion": "",
-    "swaggerVersion": "1.2",
-    "apis": [
-
-
-    ],
+    "swaggerVersion": "2.0",
+    "paths": {},
     "info": {
         "title": "",
-        "description": "",
-        "termsOfServiceUrl": "",
-        "contact": "",
-        "license": "",
-        "licenseUrl": ""
+        "version": ""
     },
-    "authorizations":{
-        "oauth2":{
-            "type": "oauth2",
-            "scopes":[]
-        }
-    }
+    apis:[]
 };
 
-
+Handlebars.registerHelper('countKeys', function(value){
+    return Object.keys(value).length * 2 + 1;
+});
 
 Handlebars.registerHelper('setIndex', function(value){
     this.index = Number(value);
@@ -231,7 +220,10 @@ APIDesigner.prototype.get_scopes = function(){
 }
 
 APIDesigner.prototype.has_resources = function(){
-    if(this.api_doc.apis.length == 0) return false;
+    if(Object.keys(this.api_doc.paths).length == 0) 
+        return false;
+    else
+        return true;
 }
 
 APIDesigner.prototype.display_elements = function(value,source){
@@ -279,7 +271,7 @@ APIDesigner.prototype.init_controllers = function(){
     var API_DESIGNER = this;
 
     $("#version").change(function(e){
-        APIDesigner().api_doc.apiVersion = $(this).val();
+        APIDesigner().api_doc.info.version = $(this).val();
         APIDesigner().baseURLValue = "http://localhost:8280/"+$("#context").val().replace("/","")+"/"+$(this).val()});
     $("#context").change(function(e){ APIDesigner().baseURLValue = "http://localhost:8280/"+$(this).val().replace("/","")+"/"+$("#version").val()});
     $("#name").change(function(e){ APIDesigner().api_doc.info.title = $(this).val() });
@@ -290,7 +282,8 @@ APIDesigner.prototype.init_controllers = function(){
         var operations = operations[0]
         var i = $(this).attr('data-index');
         var pn = $(this).attr('data-path-name');
-        jagg.message({content:'Do you want to remove "'+operations[i].method+' : '+pn+'" resource from list.',type:'confirm',title:"Remove Resource",
+        var op = $(this).attr('data-operation');        
+        jagg.message({content:'Do you want to remove "'+op+' : '+pn+'" resource from list.',type:'confirm',title:"Remove Resource",
         okCallback:function(){
             API_DESIGNER = APIDesigner();
             operations.splice(i, 1);
@@ -393,7 +386,7 @@ APIDesigner.prototype.load_api_document = function(api_document){
     this.api_doc = api_document
     this.render_resources();
     this.render_scopes();
-    $("#version").val(api_document.apiVersion);
+    $("#version").val(api_document.info.version);
     $("#name").val(api_document.info.title);
     if(api_document.info.description){
     	$("#description").val(api_document.info.description);
@@ -411,10 +404,23 @@ APIDesigner.prototype.render_scopes = function(){
     }    
 };
 
+APIDesigner.prototype.transform = function(api_doc){
+    var swagger = jQuery.extend(true, {}, this.api_doc);
+    for(var pathkey in swagger.paths){
+        var path = swagger.paths[pathkey];
+        var parameters = path.parameters;
+        delete path.parameters;
+        for(var verbkey in path){
+            var verb = path[verbkey];
+            verb.path = pathkey;
+        }
+    }
+    return swagger;
+}
 
 APIDesigner.prototype.render_resources = function(){
     context = {
-        "api_doc" : jQuery.extend(true, {}, this.api_doc),
+        "doc" : this.transform(this.api_doc),
         "verbs" :VERBS,
         "has_resources" : this.has_resources()
     }
@@ -452,7 +458,8 @@ APIDesigner.prototype.render_resources = function(){
 };
 
 APIDesigner.prototype.render_resource = function(container){
-    var operation = this.query(container.attr('data-path'));    
+    var operation = this.query(container.attr('data-path'));
+    console.log(container.attr('data-path'));    
     var context = jQuery.extend(true, {}, operation[0]);
     context.resource_path = container.attr('data-path');
     var output = Handlebars.partials['designer-resource-template'](context);
