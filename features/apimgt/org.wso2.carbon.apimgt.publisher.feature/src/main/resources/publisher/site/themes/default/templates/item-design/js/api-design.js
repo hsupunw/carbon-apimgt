@@ -460,7 +460,6 @@ APIDesigner.prototype.render_resources = function(){
 
 APIDesigner.prototype.render_resource = function(container){
     var operation = this.query(container.attr('data-path'));
-    console.log(container.attr('data-path'));    
     var context = jQuery.extend(true, {}, operation[0]);
     context.resource_path = container.attr('data-path');
     var output = Handlebars.partials['designer-resource-template'](context);
@@ -472,6 +471,8 @@ APIDesigner.prototype.render_resource = function(container){
         var decorator = container.find('.editor').data('ace');
         var aceInstance = decorator.editor.ace;
         aceInstance.getSession().on('change', function(e) {
+            console.log(operation);
+            console.log(aceInstance.getValue());    
             operation[0]["x-mediation-script"] = aceInstance.getValue();
         });
     }

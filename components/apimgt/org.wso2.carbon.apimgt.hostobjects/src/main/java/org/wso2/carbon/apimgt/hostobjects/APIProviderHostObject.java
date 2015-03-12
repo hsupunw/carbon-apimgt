@@ -453,6 +453,7 @@ public class APIProviderHostObject extends ScriptableObject {
         api.setLastUpdated(new Date());
 
         if (apiData.get("swagger", apiData) != null) {
+            apiProvider.updateSwagger2(apiId, APIConstants.API_SWAGGER_RESOURCE_NAME , (String) apiData.get("swagger", apiData));
             Set<URITemplate> uriTemplates = parseResourceConfig(apiProvider, apiId, (String) apiData.get("swagger", apiData));
             api.setUriTemplates(uriTemplates);
         }
@@ -543,6 +544,7 @@ public class APIProviderHostObject extends ScriptableObject {
         	        
         
         if (apiData.get("swagger", apiData) != null) {
+            apiProvider.updateSwagger2(apiId, APIConstants.API_SWAGGER_RESOURCE_NAME , (String) apiData.get("swagger", apiData));
         	Set<URITemplate> uriTemplates = parseResourceConfig(apiProvider, apiId, (String) apiData.get("swagger", apiData));
         	api.setUriTemplates(uriTemplates);
         }
@@ -898,7 +900,7 @@ public class APIProviderHostObject extends ScriptableObject {
                             template.setThrottlingTier((String) operation.get("x-throttling-tier"));
                             template.setMediationScript((String) operation.get("x-mediation-script"));
                             template.setUriTemplate(uriTempVal);
-                            template.setHTTPVerb(httpVerb);
+                            template.setHTTPVerb(httpVerb.toUpperCase());
                             template.setAuthType(authType);
                             //template.setScope(scope);
 
