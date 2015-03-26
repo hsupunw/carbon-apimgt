@@ -96,7 +96,8 @@
                 </div>
                 <div class="modal-body">
                     <label>Upload swagger definition:</label>
-                    <input type="file" name="somename" size="chars"> 
+                    <input type="file" id="swagger_upload_file" name="somename" size="chars">
+                    <p id="echo"></p>
                     <br />
                     <br />                        
                     <h6>OR</h6>

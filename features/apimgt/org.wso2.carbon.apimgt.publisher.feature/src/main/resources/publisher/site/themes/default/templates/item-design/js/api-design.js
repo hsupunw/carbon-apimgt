@@ -579,14 +579,47 @@ $(document).ready(function(){
     });
 
     $('#import_swagger').click(function(){
-        var data = {
-            "swagger_url" : $("#swagger_import_url").val() // "http://petstore.swagger.wordnik.com/api/api-docs"
+        var url = $("#swagger_import_url").val(); // "http://petstore.swagger.wordnik.com/api/api-docs"
+        var file = document.getElementById("swagger_upload_file").files[0];
+        var data;
+        var fileData;
+
+        if(url == "" && file == null){
+           // document.getElementById("echo").innerHTML = "fghhn";
         }
+        else if(url == "" && file != null){
+            var reader = new FileReader();
+
+            reader.onloadend = function() {
+                /*var designer = APIDesigner();
+                designer.load_api_document(JSON.parse(reader.result.toString()));
+                $("#swaggerUpload").modal('hide');*/
+                fileData = reader.result.toString();
+                //document.getElementById("echo").innerHTML = fileData;
+                /*data = {
+                    "file_data": ""+fileData
+                }*/
+                //document.getElementById("echo").innerHTML = fileData;
+                //$.get( jagg.site.context + "/site/blocks/item-design/ajax/import.jag", data , function( data ) {
+                    var designer = APIDesigner();
+                    designer.load_api_document(JSON.parse(reader.result.toString()));
+                    $("#swaggerUpload").modal('hide');
+             //   });
+            };
+            reader.readAsText(file);
+        }
+        else if(url != "" && file == null) {
+            data = {
+                "swagger_url": url
+            }
+        }
+
         $.get( jagg.site.context + "/site/blocks/item-design/ajax/import.jag", data , function( data ) {
             var designer = APIDesigner();
             designer.load_api_document(data);
             $("#swaggerUpload").modal('hide');
         });
+
     });
 
     $("#resource_url_pattern").live('change',function(){
