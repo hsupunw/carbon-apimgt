@@ -581,44 +581,40 @@ $(document).ready(function(){
     $('#import_swagger').click(function(){
         var url = $("#swagger_import_url").val(); // "http://petstore.swagger.wordnik.com/api/api-docs"
         var file = document.getElementById("swagger_upload_file").files[0];
-        var data;
-        var fileData;
 
         if(url == "" && file == null){
-           // document.getElementById("echo").innerHTML = "fghhn";
+           return;
         }
-        else if(url == "" && file != null){
+        else if(url != "" && file != null){
+            return;
+        }
+        if(url == "" && file != null){
             var reader = new FileReader();
 
             reader.onloadend = function() {
-                /*var designer = APIDesigner();
-                designer.load_api_document(JSON.parse(reader.result.toString()));
-                $("#swaggerUpload").modal('hide');*/
-                fileData = reader.result.toString();
-                //document.getElementById("echo").innerHTML = fileData;
-                /*data = {
-                    "file_data": ""+fileData
-                }*/
-                //document.getElementById("echo").innerHTML = fileData;
-                //$.get( jagg.site.context + "/site/blocks/item-design/ajax/import.jag", data , function( data ) {
+                var fileData = reader.result.toString();
+                var data = {
+                    "file_data": fileData
+                }
+
+                $.post( jagg.site.context + "/site/blocks/item-design/ajax/import.jag", data , function(data) {
                     var designer = APIDesigner();
-                    designer.load_api_document(JSON.parse(reader.result.toString()));
+                    designer.load_api_document(data);
                     $("#swaggerUpload").modal('hide');
-             //   });
+                });
             };
             reader.readAsText(file);
         }
-        else if(url != "" && file == null) {
-            data = {
+        else{
+            var data = {
                 "swagger_url": url
             }
+            $.get( jagg.site.context + "/site/blocks/item-design/ajax/import.jag", data , function( data ) {
+                var designer = APIDesigner();
+                designer.load_api_document(data);
+                $("#swaggerUpload").modal('hide');
+            });
         }
-
-        $.get( jagg.site.context + "/site/blocks/item-design/ajax/import.jag", data , function( data ) {
-            var designer = APIDesigner();
-            designer.load_api_document(data);
-            $("#swaggerUpload").modal('hide');
-        });
 
     });
 

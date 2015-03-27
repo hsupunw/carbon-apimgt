@@ -11,6 +11,7 @@ if(jagg.getUser() == null){
 response.contentType = "application/json; charset=UTF-8";
 
 var swaggerUrl = request.getParameter("swagger_url");
+var swaggerJson;
 
 if(swaggerUrl != null) {
     var url = swaggerUrl;
@@ -18,14 +19,14 @@ if(swaggerUrl != null) {
 //@todo need to validate returned swagger v2
     var data = {};
     var content = get(url, data, "json");
-    var swaggerJson = content.data;
-    print(swaggerJson);
+    swaggerJson = content.data;
 }
-else if(request.getParameter("file_data") != null){
-    //var swaggerJson = JSON.parse(request.getParameter("file_data"));
-    //print(swaggerJson);
-    var data = JSON.parse(request.getParameter("file_data"));
+else{
+    var fileData = request.getParameter("file_data");
+//@todo need to validate returned swagger v2
+    swaggerJson = JSON.parse(fileData);
 }
+print(swaggerJson);
 //@todo Error reporting
     
 %>
